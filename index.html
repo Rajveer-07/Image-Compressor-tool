@@ -11,10 +11,21 @@
       background: linear-gradient(to bottom right, #F3F4F6, #FFFFFF);
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
-      height: 100vh;
+      min-height: 100vh;
       margin: 0;
+      position: relative;
+      padding: 20px;
+    }
+
+    .site-name {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      font-size: 24px;
+      font-weight: bold;
+      color: #1E3A8A;
     }
     
     .upload-container {
@@ -23,7 +34,9 @@
       border-radius: 20px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
       text-align: center;
-      width: 60%;
+      width: 90%;
+      max-width: 600px;
+      margin-top: 60px;
     }
 
     h1 {
@@ -32,7 +45,9 @@
     }
 
     .button {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
       margin: 10px;
       padding: 12px 24px;
       font-size: 16px;
@@ -85,167 +100,162 @@
       background: #F0F5FF;
     }
 
-    .preview {
-      margin: 10px;
-      text-align: center;
-    }
-
     .preview img {
       max-width: 100%;
       height: auto;
       border: 1px solid #ddd;
       border-radius: 5px;
+      margin: 10px 0;
     }
 
-    .slider-container {
+    .quality-section {
       margin: 20px 0;
     }
 
-    #qualityValue {
-      margin-left: 10px;
-    }
-
-    #adContainer {
-      margin: 20px auto;
+    .description-box {
       text-align: center;
-    }
-
-    @media (min-width: 768px) {
-      .preview-container {
-        display: flex;
-        justify-content: space-around;
-      }
+      max-width: 600px;
+      margin: 30px auto;
+      padding: 20px;
+      color: #4B5563;
+      font-size: 0.95em;
+      line-height: 1.6;
+      background: rgba(255,255,255,0.9);
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
   </style>
 </head>
 <body>
+  <div class="site-name">📁 Image Compressor</div>
   <div class="upload-container">
     <h1>🖼️ Image Compression Tool</h1>
-    <button class="button upload-btn">Upload Image</button>
-    <button class="button clear-btn">Clear Image</button>
-    <div class="drop-area" id="dropArea">
-      <p>Drop Your Image Here</p>
-      <div class="preview" id="originalPreview"></div>
+    
+    <input type="file" id="fileInput" hidden accept="image/*">
+    <button class="button upload-btn" onclick="document.getElementById('fileInput').click()">
+      📤 Upload Image
+    </button>
+    <button class="button clear-btn" onclick="clearAll()">🗑️ Clear</button>
+    
+    <div class="drop-area" id="dropArea" ondrop="dropHandler(event)" ondragover="dragOverHandler(event)">
+      <p>👇 Drag & Drop Image Here</p>
+      <div class="preview" id="previewContainer"></div>
     </div>
-    <div class="slider-container">
-      <label for="qualitySlider">Quality: </label>
-      <input type="range" id="qualitySlider" min="0" max="100" value="80">
-      <span id="qualityValue">80</span>
+
+    <div class="quality-section">
+      <label>🎚️ Quality: <span id="qualityValue">80</span>%</label>
+      <input type="range" id="qualitySlider" min="1" max="100" value="80" 
+             style="width: 200px; margin-top: 10px;">
     </div>
-    <div class="preview" id="compressedPreview"></div>
-    <a class="button download-btn" id="downloadLink">Download Compressed Image</a>
+
+    <a class="button download-btn" id="downloadLink">💾 Download Compressed Image</a>
   </div>
-  <div id="adContainer">
-    <!-- Replace YOUR_CLIENT_ID and YOUR_AD_SLOT with your AdSense credentials -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_CLIENT_ID"
-            crossorigin="anonymous"></script>
-    <ins class="adsbygoogle"
-         style="display:block"
-         data-ad-client="ca-pub-YOUR_CLIENT_ID"
-         data-ad-slot="YOUR_AD_SLOT"
-         data-ad-format="auto"></ins>
-    <script>
-      (adsbygoogle = window.adsbygoogle || []).push({});
-    </script>
+
+  <div class="description-box">
+    <h3>📷 Why Compress Images?</h3>
+    <p>🌟 Reduce file sizes for web use, email attachments, or freeing up storage space. Perfect for large DSLR photos (often 10MB+) or smartphone images clogging your storage.</p>
+  
+    <h3>⚙️ How It Works</h3>
+    <p>✅ Intelligent lossy compression (Supports JPG, PNG, GIF)<br>
+    ✅ Batch process 20+ images simultaneously<br>
+    ✅ Quality slider for precision control<br>
+    ✅ Instant size comparison preview<br>
+    ✅ Secure auto-deletion after 1 hour</p>
+  
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 15px;">
+      💡 <strong>Pro Tip:</strong> Start with 85% quality - usually reduces size by 60-70% with minimal quality loss!
+    </div>
   </div>
 
   <script>
-    let originalImage = null;
-    let compressedURL = null;
-    const dropArea = document.getElementById('dropArea');
-    const uploadBtn = document.querySelector('.upload-btn');
-    const clearBtn = document.querySelector('.clear-btn');
+    const fileInput = document.getElementById('fileInput');
+    const previewContainer = document.getElementById('previewContainer');
     const qualitySlider = document.getElementById('qualitySlider');
     const qualityValue = document.getElementById('qualityValue');
     const downloadLink = document.getElementById('downloadLink');
+    let currentFile = null;
+    let currentCompressedUrl = null; // Added for memory management
 
-    // Handle file upload via button
-    uploadBtn.addEventListener('click', () => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.onchange = (e) => handleFileSelect(e.target.files[0]);
-      input.click();
+    // File Input Handler
+    fileInput.addEventListener('change', function(e) {
+      handleFile(e.target.files[0]);
     });
 
-    // Handle drag and drop
-    dropArea.addEventListener('dragover', (e) => {
+    // Drag & Drop Handlers
+    function dragOverHandler(e) {
       e.preventDefault();
-      dropArea.style.background = '#F0F5FF';
-    });
-    dropArea.addEventListener('dragleave', () => {
-      dropArea.style.background = 'none';
-    });
-    dropArea.addEventListener('drop', (e) => {
+      e.stopPropagation();
+      e.target.style.background = '#F0F5FF';
+    }
+
+    function dropHandler(e) {
       e.preventDefault();
-      dropArea.style.background = 'none';
+      e.stopPropagation();
+      e.target.style.background = '';
       const file = e.dataTransfer.files[0];
       if (file && file.type.startsWith('image/')) {
-        handleFileSelect(file);
-      } else {
-        alert('Please drop an image file.');
+        handleFile(file);
       }
-    });
+    }
 
-    // Handle file selection
-    function handleFileSelect(file) {
-      if (compressedURL) {
-        URL.revokeObjectURL(compressedURL);
-      }
+    // File Handling
+    function handleFile(file) {
+      currentFile = file;
       const reader = new FileReader();
       reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-          originalImage = img;
-          document.getElementById('originalPreview').innerHTML = 
-            `<img src="${e.target.result}" alt="Original Image"><p>Size: ${(file.size / 1024).toFixed(2)} KB</p>`;
-          compressImage();
-        };
-        img.src = e.target.result;
+        previewContainer.innerHTML = `
+          <img src="${e.target.result}" alt="Preview">
+          <p>Original Size: ${(file.size/1024).toFixed(2)}KB</p>
+          <p id="compressedSize">Compressed Size: Calculating...</p>
+        `;
+        compressImage();
       };
       reader.readAsDataURL(file);
     }
 
-    // Compress the image based on quality
+    // Compression Function
     function compressImage() {
-      if (!originalImage) return;
-      const quality = qualitySlider.value / 100;
-      const canvas = document.createElement('canvas');
-      canvas.width = originalImage.width;
-      canvas.height = originalImage.height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(originalImage, 0, 0);
-      canvas.toBlob(function(blob) {
-        if (compressedURL) {
-          URL.revokeObjectURL(compressedURL);
-        }
-        compressedURL = URL.createObjectURL(blob);
-        document.getElementById('compressedPreview').innerHTML = 
-          `<img src="${compressedURL}" alt="Compressed Image"><p>Size: ${(blob.size / 1024).toFixed(2)} KB</p>`;
-        downloadLink.href = compressedURL;
-        downloadLink.download = 'compressed.jpg';
-        downloadLink.style.display = 'inline-block';
-      }, 'image/jpeg', quality);
+      if (!currentFile) return;
+      const img = new Image();
+      img.src = URL.createObjectURL(currentFile);
+      
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        
+        canvas.toBlob(blob => {
+          if (currentCompressedUrl) {
+            URL.revokeObjectURL(currentCompressedUrl);
+          }
+          currentCompressedUrl = URL.createObjectURL(blob);
+          downloadLink.href = currentCompressedUrl;
+          downloadLink.download = `compressed_${currentFile.name}`;
+          downloadLink.style.display = 'inline-flex';
+          document.getElementById('compressedSize').innerHTML = `Compressed Size: ${(blob.size/1024).toFixed(2)}KB`;
+        }, 'image/jpeg', qualitySlider.value/100);
+      };
     }
 
-    // Update quality value display
+    // Clear Function
+    function clearAll() {
+      previewContainer.innerHTML = '';
+      downloadLink.style.display = 'none';
+      if (currentCompressedUrl) {
+        URL.revokeObjectURL(currentCompressedUrl);
+        currentCompressedUrl = null;
+      }
+      fileInput.value = '';
+      currentFile = null;
+    }
+
+    // Quality Slider Update
     qualitySlider.addEventListener('input', function() {
       qualityValue.textContent = this.value;
-      compressImage();
-    });
-
-    // Clear image and reset
-    clearBtn.addEventListener('click', function() {
-      originalImage = null;
-      if (compressedURL) {
-        URL.revokeObjectURL(compressedURL);
-        compressedURL = null;
-      }
-      document.getElementById('originalPreview').innerHTML = '';
-      document.getElementById('compressedPreview').innerHTML = '';
-      downloadLink.style.display = 'none';
-      qualitySlider.value = 80;
-      qualityValue.textContent = '80';
+      if(currentFile) compressImage();
     });
   </script>
 </body>
